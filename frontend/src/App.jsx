@@ -5,6 +5,11 @@ function createMessageId() {
 }
 
 function App() {
+  const [user, setUser] = useState(() => {
+    const token = localStorage.getItem("auth_token");
+    const email = localStorage.getItem("auth_email");
+    return token && email ? { token, email } : null;
+  });
   const [messages, setMessages] = useState([
     {
       id: createMessageId(),
@@ -33,6 +38,30 @@ function App() {
       abortControllerRef.current?.abort();
     };
   }, []);
+
+  if (!user) {
+    return (
+      <AuthForm
+        onAuthSuccess={({ token, email }) => {
+          localStorage.setItem("auth_token", token);
+          localStorage.setItem("auth_email", email);
+          setUser({ token, email });
+        }}
+      />
+    );
+  }
+
+  const handleLogout = async () => {
+    await apiLogout();
+    setUser(null);
+    setMessages([
+      {
+        id: createMessageId(),
+        role: "assistant",
+        content: "Bem-vindo ao ChatLLM Lab. Como posso ajudar voce hoje?",
+      },
+    ]);
+  };
 
   const onStop = () => {
     abortControllerRef.current?.abort();
@@ -112,6 +141,10 @@ function App() {
     <main className="app-shell">
       <header className="app-header">
         <div className="brand">ChatLLM Lab</div>
+        <div className="header-right">
+          <span className="user-email">{user.email}</span>
+          <button className="logout-btn" onClick={handleLogout}>Sair</button>
+        </div>
       </header>
 
       <section className="messages" aria-live="polite" ref={messagesRef}>
@@ -133,7 +166,7 @@ function App() {
         onStop={onStop}
       />
 
-      <div className="warning-banner">Lembre-se, você precisa focar no experimento!!!</div>
+      <div className="warning-banner">Lembre-se, voce precisa focar no experimento!!!</div>
     </main>
   );
 }

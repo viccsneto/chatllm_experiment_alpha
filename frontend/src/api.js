@@ -1,9 +1,39 @@
 const API_BASE = window.location.origin;
 
+function getAuthToken() {
+  return localStorage.getItem("auth_token");
+}
+
+async function authFetch(url, options = {}) {
+  const token = getAuthToken();
+  const headers = { ...options.headers };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (!headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+  return fetch(url, { ...options, headers });
+}
+
+async function apiLogout() {
+  const token = getAuthToken();
+  if (!token) return;
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    // Ignore errors on logout
+  }
+  localStorage.removeItem("auth_token");
+  localStorage.removeItem("auth_email");
+}
+
 async function sendMessageStream({ message, history, onDelta, signal }) {
-  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+  const response = await authFetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, history }),
     signal,
   });
