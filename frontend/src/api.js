@@ -1,10 +1,73 @@
 const API_BASE = window.location.origin;
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
-  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+function getAuthToken() {
+  return localStorage.getItem("auth_token");
+}
+
+async function authFetch(url, options = {}) {
+  const token = getAuthToken();
+  const headers = { ...options.headers };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (!headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+  return fetch(url, { ...options, headers });
+}
+
+async function apiLogout() {
+  const token = getAuthToken();
+  if (!token) return;
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    // Ignore errors on logout
+  }
+  localStorage.removeItem("auth_token");
+  localStorage.removeItem("auth_email");
+}
+
+// ── Session API ──────────────────────────────────────────────────────────────
+
+async function fetchSessions() {
+  const response = await authFetch(`${API_BASE}/api/sessions`);
+  if (!response.ok) throw new Error("Erro ao carregar sessoes");
+  const data = await response.json();
+  return data.sessions;
+}
+
+async function createSession() {
+  const response = await authFetch(`${API_BASE}/api/sessions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) throw new Error("Erro ao criar sessao");
+  return response.json();
+}
+
+async function fetchSessionMessages(sessionId) {
+  const response = await authFetch(`${API_BASE}/api/sessions/${sessionId}/messages`);
+  if (!response.ok) throw new Error("Erro ao carregar mensagens");
+  return response.json();
+}
+
+async function deleteSession(sessionId) {
+  const response = await authFetch(`${API_BASE}/api/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Erro ao remover sessao");
+}
+
+// ── Chat API ─────────────────────────────────────────────────────────────────
+
+async function sendMessageStream({ message, history, sessionId, onDelta, signal }) {
+  const response = await authFetch(`${API_BASE}/api/chat/stream`, {
+    method: "POST",
+    body: JSON.stringify({ message, history, session_id: sessionId }),
     signal,
   });
 
