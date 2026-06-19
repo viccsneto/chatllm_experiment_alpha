@@ -20,39 +20,50 @@ class TestRootEndpoint:
 
 
 class TestChatEndpoint:
-    def test_chat_endpoint_exists(self, client: TestClient):
-        """Verifica que o endpoint /api/chat responde (espera erro de config sem API key)."""
+    def test_chat_without_auth_returns_401(self, client: TestClient):
+        """Sem token, /api/chat retorna 401."""
         response = client.post(
             "/api/chat",
             json={"message": "Ola"},
         )
-        # Sem OPENROUTER_API_KEY definida, esperamos 503 (config error)
-        assert response.status_code in (200, 422, 503)
+        assert response.status_code == 401
 
-    def test_chat_empty_message_rejected(self, client: TestClient):
-        """Mensagem vazia deve ser rejeitada com 422 (validacao Pydantic)."""
+    def test_chat_with_auth_and_empty_message_rejected(self, client: TestClient):
+        """Mensagem vazia deve ser rejeitada com 422 (validacao Pydantic), mesmo autenticado."""
+        # Primeiro registra e obtem token
+        reg = client.post(
+            "/api/auth/register",
+            json={"email": "chat-test@example.com", "password": "123456"},
+        )
+        token = reg.json()["token"]
         response = client.post(
             "/api/chat",
             json={"message": ""},
+            headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 422
 
 
 class TestChatStreamEndpoint:
-    def test_chat_stream_endpoint_exists(self, client: TestClient):
-        """Verifica que o endpoint /api/chat/stream aceita requisicoes."""
+    def test_chat_stream_without_auth_returns_401(self, client: TestClient):
+        """Sem token, /api/chat/stream retorna 401."""
         response = client.post(
             "/api/chat/stream",
             json={"message": "Ola"},
         )
-        # Streaming pode iniciar e depois falhar sem API key
-        assert response.status_code in (200, 422, 503)
+        assert response.status_code == 401
 
-    def test_chat_stream_empty_message_rejected(self, client: TestClient):
+    def test_chat_stream_with_auth_and_empty_message_rejected(self, client: TestClient):
         """Stream com mensagem vazia deve ser rejeitado com 422."""
+        reg = client.post(
+            "/api/auth/register",
+            json={"email": "stream-test@example.com", "password": "123456"},
+        )
+        token = reg.json()["token"]
         response = client.post(
             "/api/chat/stream",
             json={"message": ""},
+            headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 422
 

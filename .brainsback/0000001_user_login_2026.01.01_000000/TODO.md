@@ -5,17 +5,26 @@
 **Hard rule**: AI agents must not edit this file and must not draft paste-ready content for it.
 
 ## The Problem
-_State clearly what you are trying to achieve and the architectural constraints, avoiding implementation specifics of HOW to do it. Focus on WHAT and WHY._
+Preciso da implementação de uma tela de login. Ela deve ser a primeira tela que o usuário acessa caso não esteja logado. O chat só deve poder ser acessível caso o usuário esteja logado. Para isso, preciso da implementação do Modelo User. A tela deve ser implementada seguindo instruções modernas de UI.
 
 ## Steps
-- [ ] _Decompose the problem into actionable logical steps._
-- [ ] _Each step should represent a verifiable piece of work._
+- [ ] Crie um Modelo de User, que será um tabela SQLAlchemy. Deve ter todos os dados necessários de um usuário de um MVP simples. id, email (UNIQUE), password_hash, created_at. Caso exsita a necessidade de mais algum aplique.
+- [ ] Faça a criação das rotas de autenticação POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me. Códigos HTTP mais adequados podem ser retornados, exemplo 201 para register com sucesso, 409 para register com email duplicado, 401 para auetnticacao com login inválido
+- [ ] As rotas POST/api/chat e POST/api/stream precisam ser protegidas pelo middleware
+- [ ] Middleware para get_current_user
+- [ ] O usuário pode acessar direto o chat armazenando token no localStorage
+- [ ] Devem ser realizados Testes com registro, login, logout, acesso negado sem token, email duplicado, etc.
 
 ## Success Looks Like
-- [ ] _Define rigorous, observable criteria for success. E.g., The endpoint returns 200 OK with the user object, NOT Code compiles_
+- [ ] O usuário é direcionado para tela inicial caso não esteja logado. Na tela de login deve ter uma interface moderna, com boas práticas de UX/UI. Devem ter campos pro usuário preencher dados de login. Deve poder clicar no botão e realizar login. Deve poder Clicar no botão para criar uma conta. Deve poder fazer login ao preencher uma conta válida. Deve ser negado ao prencher uma conta inválida.
+- [ ] A consistencia da criação do usuário, interação das rotas, interface do usuário devem ser testadas durante implementação para garantir bom resultado final.
+- [ ] Podem ser usadas telas de login padrão considerads referências para a aplicação de um bom design.
 
 ## Notes
-- [ ] _Any specific edge cases, libraries to consider, or potential pitfalls._
+- [ ] Token pode ser armazenado em cookie.
+- [ ] A senha deve ser um hash. Pode ser utilizada lib para a solução.
+- [ ] Pode ser usado Schemas Pydantic (RegisterRequest, LoginRequest, AuthResponse) 
+- [ ] Autenticação pode usar JWT. Pode ser usada a lib PyJWT
 
 ---
 **⚠️ HUMAN ONLY**: This file is your strategic space. AI agents must not edit it.
