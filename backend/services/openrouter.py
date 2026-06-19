@@ -108,3 +108,41 @@ async def stream_reply(*, user_message: str, history: list[dict], model: str | N
                 delta = parsed.get("choices", [{}])[0].get("delta", {}).get("content")
                 if isinstance(delta, str) and delta:
                     yield delta
+
+
+async def generate_title(user_message: str, model: str | None = None) -> str:
+    """Generate a short title for a session based on the first user message."""
+    if not OPENROUTER_API_KEY:
+        raise OpenRouterConfigError(
+            "OPENROUTER_API_KEY nao definido. Configure em .env ou environment variables."
+        )
+
+    resolved_model = model or OPENROUTER_MODEL_DEFAULT
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Generate a short title (max 6 words) for a conversation that starts "
+                "with the user message below. Return only the title, no quotation marks, "
+                "no punctuation. Respond in the same language as the message."
+            ),
+        },
+        {"role": "user", "content": user_message},
+    ]
+
+    payload = {
+        "model": resolved_model,
+        "messages": messages,
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(OPENROUTER_API_URL, json=payload, headers=_build_headers())
+
+    if response.status_code >= 400:
+        return "Nova conversa"
+
+    data = response.json()
+    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    title = content.strip().strip('"').strip("'")
+    return title[:60] if title else "Nova conversa"

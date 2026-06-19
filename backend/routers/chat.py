@@ -8,10 +8,15 @@ from sqlalchemy.orm import Session
 
 from backend.config import OPENROUTER_MODEL_DEFAULT
 from backend.database import get_db
-from backend.models import ChatMessage
+from backend.models import ChatMessage, ChatSession
 from backend.routers.auth import get_current_user
 from backend.schemas.chat import ChatRequest, ChatResponse
-from backend.services.openrouter import OpenRouterConfigError, generate_reply, stream_reply
+from backend.services.openrouter import (
+    OpenRouterConfigError,
+    generate_reply,
+    generate_title,
+    stream_reply,
+)
 
 
 router = APIRouter()
@@ -26,7 +31,7 @@ def health_check() -> dict[str, str]:
 async def chat(
     payload: ChatRequest,
     db: Session = Depends(get_db),
-    _current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ) -> ChatResponse:
     try:
         reply, model_name = await generate_reply(
@@ -41,10 +46,29 @@ async def chat(
 
     resolved_model = payload.model or model_name or OPENROUTER_MODEL_DEFAULT
 
-    # Persistimos apenas o fluxo basico de mensagens; sessoes e titulos sao tarefa do participante.
-    db.add(ChatMessage(session_key="default", role="user", content=payload.message, model=resolved_model))
-    db.add(ChatMessage(session_key="default", role="assistant", content=reply, model=resolved_model))
+    db.add(ChatMessage(session_key="default", session_id=payload.session_id, role="user", content=payload.message, model=resolved_model))
+    db.add(ChatMessage(session_key="default", session_id=payload.session_id, role="assistant", content=reply, model=resolved_model))
     db.commit()
+
+    # Generate automatic title if session has no title yet
+    if payload.session_id is not None:
+        session = (
+            db.query(ChatSession)
+            .filter(
+                ChatSession.id == payload.session_id,
+                ChatSession.user_id == current_user.id,
+            )
+            .first()
+        )
+        if session and not session.title:
+            try:
+                session_title = await generate_title(
+                    user_message=payload.message, model=payload.model
+                )
+                session.title = session_title
+                db.commit()
+            except Exception:
+                pass
 
     return ChatResponse(reply=reply, model=resolved_model)
 
@@ -53,7 +77,7 @@ async def chat(
 async def chat_stream(
     payload: ChatRequest,
     db: Session = Depends(get_db),
-    _current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ) -> StreamingResponse:
     resolved_model = payload.model or OPENROUTER_MODEL_DEFAULT
 
@@ -75,23 +99,46 @@ async def chat_stream(
             return
 
         if full_reply.strip():
-            db.add(
-                ChatMessage(
-                    session_key="default",
-                    role="user",
-                    content=payload.message,
-                    model=resolved_model,
-                )
+            msg_user = ChatMessage(
+                session_key="default",
+                session_id=payload.session_id,
+                role="user",
+                content=payload.message,
+                model=resolved_model,
             )
-            db.add(
-                ChatMessage(
-                    session_key="default",
-                    role="assistant",
-                    content=full_reply,
-                    model=resolved_model,
-                )
+            msg_assistant = ChatMessage(
+                session_key="default",
+                session_id=payload.session_id,
+                role="assistant",
+                content=full_reply,
+                model=resolved_model,
             )
+            db.add(msg_user)
+            db.add(msg_assistant)
             db.commit()
+
+            # Generate automatic title if session has no title yet
+            if payload.session_id is not None:
+                session = (
+                    db.query(ChatSession)
+                    .filter(
+                        ChatSession.id == payload.session_id,
+                        ChatSession.user_id == current_user.id,
+                    )
+                    .first()
+                )
+                if session and not session.title:
+                    try:
+                        session_title = await generate_title(
+                            user_message=payload.message, model=payload.model
+                        )
+                        session.title = session_title
+                        db.commit()
+                    except Exception:
+                        pass  # Non-critical, keep session without title
+
+            yield f"data: {json.dumps({'done': True}, ensure_ascii=True)}\n\n"
+            return
 
         yield f"data: {json.dumps({'done': True}, ensure_ascii=True)}\n\n"
 
