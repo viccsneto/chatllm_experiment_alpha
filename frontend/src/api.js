@@ -1,9 +1,60 @@
 const API_BASE = window.location.origin;
 
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  return token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : { "Content-Type": "application/json" };
+}
+
+async function apiRegister(email, password) {
+  const response = await fetch(`${API_BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(extractError(data) || "Erro ao registrar.");
+  return data;
+}
+
+async function apiLogin(email, password) {
+  const response = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(extractError(data) || "Erro ao fazer login.");
+  return data;
+}
+
+function extractError(data) {
+  if (typeof data.detail === "string") return data.detail;
+  if (Array.isArray(data.detail)) return data.detail.map(e => e.msg).join("; ");
+  return "Erro de validacao.";
+}
+
+async function apiLogout() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("email");
+  const response = await fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  return response.json();
+}
+
+async function apiMe() {
+  const response = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
 async function sendMessageStream({ message, history, onDelta, signal }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ message, history }),
     signal,
   });

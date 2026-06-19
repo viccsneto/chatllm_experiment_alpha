@@ -5,6 +5,28 @@ function createMessageId() {
 }
 
 function App() {
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [userEmail, setUserEmail] = useState(() => localStorage.getItem("email"));
+
+  const handleAuthSuccess = (newToken, email) => {
+    setToken(newToken);
+    setUserEmail(email);
+  };
+
+  const handleLogout = async () => {
+    await apiLogout();
+    setToken(null);
+    setUserEmail(null);
+  };
+
+  if (!token) {
+    return <Login onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  return <ChatApp userEmail={userEmail} onLogout={handleLogout} />;
+}
+
+function ChatApp({ userEmail, onLogout }) {
   const [messages, setMessages] = useState([
     {
       id: createMessageId(),
@@ -112,6 +134,10 @@ function App() {
     <main className="app-shell">
       <header className="app-header">
         <div className="brand">ChatLLM Lab</div>
+        <div className="header-user">
+          <span className="header-email">{userEmail}</span>
+          <button className="logout-btn" onClick={onLogout}>Sair</button>
+        </div>
       </header>
 
       <section className="messages" aria-live="polite" ref={messagesRef}>
