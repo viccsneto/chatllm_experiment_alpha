@@ -7,7 +7,7 @@ from backend.models import ChatMessage
 
 class TestChatMessage:
     def test_create_message_defaults(self, db_session):
-        """Deve criar uma mensagem com valores padrao para session_key, model e created_at."""
+        """Deve criar uma mensagem com valores padrao para session_id, model e created_at."""
         msg = ChatMessage(
             role="user",
             content="Ola, mundo!",
@@ -17,16 +17,16 @@ class TestChatMessage:
         db_session.refresh(msg)
 
         assert msg.id is not None
-        assert msg.session_key == "default"
+        assert msg.session_id == 0
         assert msg.role == "user"
         assert msg.content == "Ola, mundo!"
         assert msg.model == "google/gemma-4-31b-it"
         assert isinstance(msg.created_at, datetime)
 
     def test_create_message_custom_session(self, db_session):
-        """Deve criar uma mensagem com session_key customizada."""
+        """Deve criar uma mensagem com session_id customizado."""
         msg = ChatMessage(
-            session_key="session-abc",
+            session_id=42,
             role="assistant",
             content="Resposta do assistente.",
         )
@@ -34,7 +34,7 @@ class TestChatMessage:
         db_session.commit()
         db_session.refresh(msg)
 
-        assert msg.session_key == "session-abc"
+        assert msg.session_id == 42
         assert msg.role == "assistant"
 
     def test_create_message_custom_model(self, db_session):
@@ -50,16 +50,16 @@ class TestChatMessage:
 
         assert msg.model == "openai/gpt-4o"
 
-    def test_query_by_session_key(self, db_session):
-        """Deve filtrar mensagens por session_key."""
-        msg1 = ChatMessage(session_key="s1", role="user", content="a")
-        msg2 = ChatMessage(session_key="s2", role="user", content="b")
+    def test_query_by_session_id(self, db_session):
+        """Deve filtrar mensagens por session_id."""
+        msg1 = ChatMessage(session_id=1, role="user", content="a")
+        msg2 = ChatMessage(session_id=2, role="user", content="b")
         db_session.add_all([msg1, msg2])
         db_session.commit()
 
         results = (
             db_session.query(ChatMessage)
-            .filter(ChatMessage.session_key == "s1")
+            .filter(ChatMessage.session_id == 1)
             .all()
         )
         assert len(results) == 1
