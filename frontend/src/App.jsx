@@ -4,7 +4,7 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function App() {
+function ChatApp({ user, onLogout }) {
   const [messages, setMessages] = useState([
     {
       id: createMessageId(),
@@ -108,10 +108,24 @@ function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      // Ignore logout errors
+    }
+    localStorage.removeItem("access_token");
+    onLogout();
+  };
+
   return (
     <main className="app-shell">
       <header className="app-header">
         <div className="brand">ChatLLM Lab</div>
+        <div className="header-right">
+          <span className="user-name">{user.name}</span>
+          <button className="logout-btn" onClick={handleLogout}>Sair</button>
+        </div>
       </header>
 
       <section className="messages" aria-live="polite" ref={messagesRef}>
@@ -133,9 +147,46 @@ function App() {
         onStop={onStop}
       />
 
-      <div className="warning-banner">Lembre-se, você precisa focar no experimento!!!</div>
+      <div className="warning-banner">Lembre-se, voce precisa focar no experimento!!!</div>
     </main>
   );
+}
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      getMe()
+        .then((userData) => setUser(userData))
+        .catch(() => {
+          localStorage.removeItem("access_token");
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleAuthSuccess = (userData) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+  };
+
+  if (loading) {
+    return <main className="app-shell"><div className="loading">Carregando...</div></main>;
+  }
+
+  if (!user) {
+    return <Auth onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  return <ChatApp user={user} onLogout={handleLogout} />;
 }
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
