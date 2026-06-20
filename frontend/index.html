@@ -427,7 +427,181 @@
         font-size: 1rem;
       }
 
+      /* --- Sidebar --- */
+      .sidebar {
+        width: 260px;
+        background: #f9f9fb;
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        overflow: hidden;
+        transition: width 180ms ease;
+      }
+
+      .sidebar-header {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .new-chat-btn {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--text);
+        font: inherit;
+        font-size: 0.87rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: background 120ms;
+      }
+
+      .new-chat-btn:hover {
+        background: #f0f0f0;
+      }
+
+      .sidebar-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+      }
+
+      .sidebar-loading,
+      .sidebar-empty {
+        padding: 20px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+
+      .sidebar-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 10px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-bottom: 2px;
+        transition: background 120ms;
+        font-size: 0.85rem;
+      }
+
+      .sidebar-item:hover {
+        background: #ecedf0;
+      }
+
+      .sidebar-item.active {
+        background: #e2e3e8;
+        font-weight: 500;
+      }
+
+      .sidebar-item-title {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .sidebar-item-delete {
+        opacity: 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--muted);
+        padding: 2px;
+        border-radius: 4px;
+        transition: opacity 120ms, color 120ms;
+        flex-shrink: 0;
+      }
+
+      .sidebar-item:hover .sidebar-item-delete {
+        opacity: 1;
+      }
+
+      .sidebar-item-delete:hover {
+        color: #e53e3e;
+      }
+
+      .sidebar-item-edit {
+        opacity: 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--muted);
+        padding: 2px;
+        border-radius: 4px;
+        transition: opacity 120ms, color 120ms;
+        flex-shrink: 0;
+      }
+
+      .sidebar-item:hover .sidebar-item-edit {
+        opacity: 1;
+      }
+
+      .sidebar-item-edit:hover {
+        color: var(--accent);
+      }
+
+      .sidebar-edit-input {
+        flex: 1;
+        font: inherit;
+        font-size: 0.85rem;
+        padding: 2px 6px;
+        border: 1px solid var(--accent);
+        border-radius: 4px;
+        outline: none;
+        background: #fff;
+        min-width: 0;
+      }
+
+      /* --- Chat area layout --- */
+      .app-shell.sidebar-visible {
+        flex-direction: row;
+      }
+
+      .chat-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .sidebar-toggle {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--muted);
+        padding: 4px;
+        border-radius: 6px;
+        transition: background 120ms;
+      }
+
+      .sidebar-toggle:hover {
+        background: #f0f0f0;
+      }
+
+      .empty-chat {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 1.1rem;
+      }
+
       @media (max-width: 640px) {
+        .sidebar { width: 200px; }
         .bubble.user { max-width: 90%; }
         .messages { padding: 20px 12px 12px; }
         .composer-wrap { padding: 8px 12px 16px; }
@@ -450,6 +624,7 @@
     ></script>
     <script type="text/babel" src="/frontend/src/api.js"></script>
     <script type="text/babel" src="/frontend/src/Auth.jsx"></script>
+    <script type="text/babel" src="/frontend/src/Sidebar.jsx"></script>
     <script type="text/babel" src="/frontend/src/MessageContent.jsx"></script>
     <script type="text/babel" src="/frontend/src/Composer.jsx"></script>
     <script type="text/babel" src="/frontend/src/App.jsx"></script>
