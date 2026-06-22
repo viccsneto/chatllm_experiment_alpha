@@ -1,10 +1,140 @@
 const API_BASE = window.location.origin;
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
-  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+// --- Auth helpers ---
+
+function getToken() {
+  return localStorage.getItem("chatllm_token");
+}
+
+function getEmail() {
+  return localStorage.getItem("chatllm_email");
+}
+
+function setAuth(token, email) {
+  localStorage.setItem("chatllm_token", token);
+  localStorage.setItem("chatllm_email", email);
+}
+
+function clearAuth() {
+  localStorage.removeItem("chatllm_token");
+  localStorage.removeItem("chatllm_email");
+}
+
+function isAuthenticated() {
+  return !!getToken();
+}
+
+async function apiRegister(email, password) {
+  const response = await fetch(`${API_BASE}/api/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro ao cadastrar.");
+  }
+  return data;
+}
+
+async function apiLogin(email, password) {
+  const response = await fetch(`${API_BASE}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro ao fazer login.");
+  }
+  return data;
+}
+
+async function apiLogout() {
+  try {
+    await fetch(`${API_BASE}/api/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+  } catch {
+    // Ignore network errors on logout
+  }
+  clearAuth();
+}
+
+async function apiMe() {
+  const token = getToken();
+  if (!token) return null;
+  const response = await fetch(`${API_BASE}/api/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
+// --- Session API ---
+
+async function apiListSessions() {
+  const response = await fetch(`${API_BASE}/api/sessions`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!response.ok) return [];
+  return response.json();
+}
+
+async function apiCreateSession() {
+  const response = await fetch(`${API_BASE}/api/sessions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+    },
+  });
+  if (!response.ok) throw new Error("Erro ao criar sessao.");
+  return response.json();
+}
+
+async function apiDeleteSession(sessionId) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!response.ok) throw new Error("Erro ao deletar sessao.");
+}
+
+async function apiGetSessionMessages(sessionId) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionId}/messages`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!response.ok) return [];
+  return response.json();
+}
+
+async function apiUpdateSessionTitle(sessionId, title) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ title }),
+  });
+  if (!response.ok) throw new Error("Erro ao atualizar titulo.");
+  return response.json();
+}
+
+// --- Chat stream ---
+
+async function sendMessageStream({ message, sessionId, history, onDelta, signal }) {
+  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ message, session_id: sessionId, history }),
     signal,
   });
 
@@ -21,6 +151,7 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+  let sessionInfo = null;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -53,6 +184,14 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
       if (payload.delta) {
         onDelta(payload.delta);
       }
+
+      if (payload.done) {
+        if (payload.session_id) {
+          sessionInfo = { id: payload.session_id, title: payload.session_title || "Nova conversa" };
+        }
+      }
     }
   }
+
+  return sessionInfo;
 }
