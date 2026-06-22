@@ -20,17 +20,21 @@ class TestRootEndpoint:
 
 
 class TestChatEndpoint:
-    def test_chat_endpoint_exists(self, client: TestClient):
-        """Verifica que o endpoint /api/chat responde (espera erro de config sem API key)."""
+    def test_chat_endpoint_requires_authentication(self, client: TestClient):
         response = client.post(
             "/api/chat",
             json={"message": "Ola"},
         )
-        # Sem OPENROUTER_API_KEY definida, esperamos 503 (config error)
-        assert response.status_code in (200, 422, 503)
+        assert response.status_code == 401
 
-    def test_chat_empty_message_rejected(self, client: TestClient):
-        """Mensagem vazia deve ser rejeitada com 422 (validacao Pydantic)."""
+    def test_chat_empty_message_rejected_when_authenticated(self, client: TestClient):
+        # The route is protected, but invalid request bodies are still validated as 422 when authenticated.
+        signup_response = client.post(
+            "/api/auth/signup",
+            json={"email": "empty@example.com", "password": "senha123"},
+        )
+        assert signup_response.status_code == 200
+
         response = client.post(
             "/api/chat",
             json={"message": ""},
@@ -39,17 +43,20 @@ class TestChatEndpoint:
 
 
 class TestChatStreamEndpoint:
-    def test_chat_stream_endpoint_exists(self, client: TestClient):
-        """Verifica que o endpoint /api/chat/stream aceita requisicoes."""
+    def test_chat_stream_endpoint_requires_authentication(self, client: TestClient):
         response = client.post(
             "/api/chat/stream",
             json={"message": "Ola"},
         )
-        # Streaming pode iniciar e depois falhar sem API key
-        assert response.status_code in (200, 422, 503)
+        assert response.status_code == 401
 
-    def test_chat_stream_empty_message_rejected(self, client: TestClient):
-        """Stream com mensagem vazia deve ser rejeitado com 422."""
+    def test_chat_stream_empty_message_rejected_when_authenticated(self, client: TestClient):
+        signup_response = client.post(
+            "/api/auth/signup",
+            json={"email": "stream@example.com", "password": "senha123"},
+        )
+        assert signup_response.status_code == 200
+
         response = client.post(
             "/api/chat/stream",
             json={"message": ""},

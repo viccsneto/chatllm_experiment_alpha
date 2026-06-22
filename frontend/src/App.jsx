@@ -5,6 +5,12 @@ function createMessageId() {
 }
 
 function App() {
+  const [userEmail, setUserEmail] = useState(null);
+  const [authMode, setAuthMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: createMessageId(),
@@ -34,16 +40,66 @@ function App() {
     };
   }, []);
 
-  const onStop = () => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-    setBusy(false);
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const data = await window.getCurrentUser();
+        setUserEmail(data.email);
+      } catch {
+        setUserEmail(null);
+      }
+    }
+
+    loadUser();
+  }, []);
+
+  const authAction = authMode === "login" ? window.login : window.signup;
+
+  const onAuthSubmit = async (event) => {
+    event.preventDefault();
+    if (authBusy || !email.trim() || !password.trim()) return;
+
+    setAuthError("");
+    setAuthBusy(true);
+
+    try {
+      await authAction({ email: email.trim(), password });
+      const data = await window.getCurrentUser();
+      setUserEmail(data.email);
+      setEmail("");
+      setPassword("");
+    } catch (err) {
+      setAuthError(err.message || "Falha ao autenticar.");
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
-  const onSubmit = async (event, inputRef) => {
+  const onLogout = async () => {
+    setAuthError("");
+    setAuthBusy(true);
+
+    try {
+      await window.logout();
+      setUserEmail(null);
+      setMessages([
+        {
+          id: createMessageId(),
+          role: "assistant",
+          content: "Voce saiu. Faça login para usar o ChatLLM Lab.",
+        },
+      ]);
+    } catch (err) {
+      setAuthError(err.message || "Falha ao fazer logout.");
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const onSubmit = async (event) => {
     event.preventDefault();
     const cleaned = text.trim();
-    if (!cleaned || busy) return;
+    if (!cleaned || busy || authBusy) return;
 
     setError("");
     const userMessage = { id: createMessageId(), role: "user", content: cleaned };
@@ -60,7 +116,7 @@ function App() {
     abortControllerRef.current = abortController;
 
     try {
-      await sendMessageStream({
+      await window.sendMessageStream({
         message: cleaned,
         history: chatHistory,
         signal: abortController.signal,
@@ -108,10 +164,74 @@ function App() {
     }
   };
 
+  if (!userEmail) {
+    return (
+      <main className="app-shell">
+        <header className="app-header">
+          <div className="brand">ChatLLM Lab</div>
+        </header>
+
+        <section className="auth-panel">
+          <div className="auth-card">
+            <h1>{authMode === "login" ? "Entrar" : "Criar conta"}</h1>
+            <p className="note">Faça login ou cadastre-se para acessar o ChatLLM.</p>
+            {authError && <div className="note error">{authError}</div>}
+            <form className="auth-form" onSubmit={onAuthSubmit}>
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="seu@email.com"
+                  disabled={authBusy}
+                  required
+                />
+              </label>
+              <label>
+                Senha
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Senha (mínimo 8 caracteres)"
+                  disabled={authBusy}
+                  required
+                />
+              </label>
+              <button type="submit" disabled={authBusy || !email.trim() || !password.trim()}>
+                {authBusy ? "Aguarde..." : authMode === "login" ? "Entrar" : "Criar conta"}
+              </button>
+            </form>
+            <div className="auth-switch">
+              {authMode === "login" ? "Nao tem conta?" : "Ja tem conta?"}
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  setAuthMode(authMode === "login" ? "signup" : "login");
+                  setAuthError("");
+                }}
+              >
+                {authMode === "login" ? "Cadastre-se" : "Entrar"}
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
         <div className="brand">ChatLLM Lab</div>
+        <div className="user-bar">
+          <span>{userEmail}</span>
+          <button type="button" onClick={onLogout} disabled={busy || authBusy}>
+            Sair
+          </button>
+        </div>
       </header>
 
       <section className="messages" aria-live="polite" ref={messagesRef}>
@@ -130,7 +250,11 @@ function App() {
         error={error}
         onChangeText={setText}
         onSubmit={onSubmit}
-        onStop={onStop}
+        onStop={() => {
+          abortControllerRef.current?.abort();
+          abortControllerRef.current = null;
+          setBusy(false);
+        }}
       />
 
       <div className="warning-banner">Lembre-se, você precisa focar no experimento!!!</div>
