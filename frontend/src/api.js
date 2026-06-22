@@ -1,9 +1,89 @@
 const API_BASE = window.location.origin;
 
+// --- Auth helpers ---
+
+function getToken() {
+  return localStorage.getItem("chatllm_token");
+}
+
+function getEmail() {
+  return localStorage.getItem("chatllm_email");
+}
+
+function setAuth(token, email) {
+  localStorage.setItem("chatllm_token", token);
+  localStorage.setItem("chatllm_email", email);
+}
+
+function clearAuth() {
+  localStorage.removeItem("chatllm_token");
+  localStorage.removeItem("chatllm_email");
+}
+
+function isAuthenticated() {
+  return !!getToken();
+}
+
+async function apiRegister(email, password) {
+  const response = await fetch(`${API_BASE}/api/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro ao cadastrar.");
+  }
+  return data;
+}
+
+async function apiLogin(email, password) {
+  const response = await fetch(`${API_BASE}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro ao fazer login.");
+  }
+  return data;
+}
+
+async function apiLogout() {
+  try {
+    await fetch(`${API_BASE}/api/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+  } catch {
+    // Ignore network errors on logout
+  }
+  clearAuth();
+}
+
+async function apiMe() {
+  const token = getToken();
+  if (!token) return null;
+  const response = await fetch(`${API_BASE}/api/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
+// --- Chat stream ---
+
 async function sendMessageStream({ message, history, onDelta, signal }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
     body: JSON.stringify({ message, history }),
     signal,
   });

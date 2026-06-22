@@ -4,7 +4,80 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function AuthScreen({ onAuthSuccess }) {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!email.trim() || !password) {
+      setError("Preencha email e senha.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = isLogin
+        ? await apiLogin(email.trim(), password)
+        : await apiRegister(email.trim(), password);
+      setAuth(result.access_token, result.email);
+      onAuthSuccess();
+    } catch (err) {
+      setError(err.message || "Erro inesperado.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="auth-screen">
+      <div className="auth-card">
+        <h1 className="auth-title">ChatLLM Lab</h1>
+        <p className="auth-subtitle">{isLogin ? "Faça login para continuar" : "Crie sua conta"}</p>
+
+        {error && <div className="auth-error">{error}</div>}
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="auth-input"
+            autoFocus
+            disabled={loading}
+          />
+          <input
+            type="password"
+            placeholder="Senha (mín. 6 caracteres)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="auth-input"
+            disabled={loading}
+            minLength={6}
+          />
+          <button type="submit" className="auth-btn" disabled={loading}>
+            {loading ? "Aguarde..." : isLogin ? "Entrar" : "Cadastrar"}
+          </button>
+        </form>
+
+        <p className="auth-toggle">
+          {isLogin ? "Não tem conta?" : "Já tem conta?"}{" "}
+          <button className="auth-link-btn" onClick={() => { setIsLogin(!isLogin); setError(""); }}>
+            {isLogin ? "Cadastre-se" : "Fazer login"}
+          </button>
+        </p>
+      </div>
+    </main>
+  );
+}
+
 function App() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [messages, setMessages] = useState([
     {
       id: createMessageId(),
@@ -17,6 +90,22 @@ function App() {
   const [error, setError] = useState("");
   const messagesRef = useRef(null);
   const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    if (isAuthenticated()) {
+      apiMe().then((user) => {
+        if (user) {
+          setAuthenticated(true);
+        } else {
+          clearAuth();
+        }
+        setCheckingAuth(false);
+      });
+    } else {
+      setCheckingAuth(false);
+    }
+  }, []);
 
   const chatHistory = useMemo(
     () => messages.filter((msg) => msg.role === "user" || msg.role === "assistant"),
@@ -108,10 +197,38 @@ function App() {
     }
   };
 
+  const handleLogout = async () => {
+    await apiLogout();
+    setAuthenticated(false);
+    setMessages([
+      {
+        id: createMessageId(),
+        role: "assistant",
+        content: "Bem-vindo ao ChatLLM Lab. Como posso ajudar voce hoje?",
+      },
+    ]);
+  };
+
+  if (checkingAuth) {
+    return (
+      <main className="app-shell">
+        <div className="auth-loading">Verificando autenticacao...</div>
+      </main>
+    );
+  }
+
+  if (!authenticated) {
+    return <AuthScreen onAuthSuccess={() => setAuthenticated(true)} />;
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
         <div className="brand">ChatLLM Lab</div>
+        <div className="header-right">
+          <span className="header-email">{getEmail()}</span>
+          <button className="logout-btn" onClick={handleLogout}>Sair</button>
+        </div>
       </header>
 
       <section className="messages" aria-live="polite" ref={messagesRef}>
@@ -133,7 +250,7 @@ function App() {
         onStop={onStop}
       />
 
-      <div className="warning-banner">Lembre-se, você precisa focar no experimento!!!</div>
+      <div className="warning-banner">Lembre-se, voce precisa focar no experimento!!!</div>
     </main>
   );
 }
