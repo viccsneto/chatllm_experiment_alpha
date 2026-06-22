@@ -65,6 +65,13 @@ class TestChatRequest:
 
 class TestChatResponse:
     def test_valid_response(self):
-        resp = ChatResponse(reply="Resposta do modelo.", model="google/gemma-4-31b-it")
+        resp = ChatResponse(
+            reply="Resposta do modelo.",
+            model="google/gemma-4-31b-it",
+            session_key="abc123",
+            session_title="Nova conversa",
+        )
         assert resp.reply == "Resposta do modelo."
         assert resp.model == "google/gemma-4-31b-it"
+        assert resp.session_key == "abc123"
+        assert resp.session_title == "Nova conversa"
