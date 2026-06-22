@@ -6,8 +6,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from backend.auth import get_current_user, hash_password
 from backend.database import Base, get_db
 from backend.main import app
+from backend.models import User
 
 
 @pytest.fixture(scope="session")
@@ -65,3 +67,39 @@ def client(db_session):
         yield test_client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def test_user(db_session):
+    """Cria um usuario de teste e retorna suas credenciais."""
+    user = User(
+        email="teste@example.com",
+        hashed_password=hash_password("senha123"),
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def auth_headers(client, test_user):
+    """Faz login e retorna os headers de autorizacao."""
+    response = client.post(
+        "/api/login",
+        json={"email": "teste@example.com", "password": "senha123"},
+    )
+    assert response.status_code == 200
+    token = response.json()["token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def test_session(db_session, test_user):
+    """Cria uma sessao de teste e retorna seu id."""
+    from backend.models import Session as ChatSession
+    s = ChatSession(user_id=test_user.id)
+    db_session.add(s)
+    db_session.commit()
+    db_session.refresh(s)
+    return s

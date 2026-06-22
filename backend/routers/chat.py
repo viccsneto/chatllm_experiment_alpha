@@ -1,19 +1,36 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from backend.auth import get_current_user
 from backend.config import OPENROUTER_MODEL_DEFAULT
 from backend.database import get_db
-from backend.models import ChatMessage
+from backend.models import ChatMessage, Session, User
 from backend.schemas.chat import ChatRequest, ChatResponse
 from backend.services.openrouter import OpenRouterConfigError, generate_reply, stream_reply
 
 
 router = APIRouter()
+
+
+def _get_session_or_404(session_id: int, user: User, db: Session) -> Session:
+    session = db.query(Session).filter(Session.id == session_id, Session.user_id == user.id).first()
+    if session is None:
+        raise HTTPException(status_code=404, detail="Sessao nao encontrada.")
+    return session
+
+
+def _auto_title(message: str) -> str:
+    """Gera um titulo a partir da primeira mensagem do usuario."""
+    clean = message.strip()
+    if len(clean) <= 60:
+        return clean
+    return clean[:57] + "..."
 
 
 @router.get("/health")
@@ -22,7 +39,13 @@ def health_check() -> dict[str, str]:
 
 
 @router.post("/api/chat", response_model=ChatResponse)
-async def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
+async def chat(
+    payload: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ChatResponse:
+    session = _get_session_or_404(payload.session_id, current_user, db)
+
     try:
         reply, model_name = await generate_reply(
             user_message=payload.message,
@@ -36,16 +59,25 @@ async def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> ChatRespo
 
     resolved_model = payload.model or model_name or OPENROUTER_MODEL_DEFAULT
 
-    # Persistimos apenas o fluxo basico de mensagens; sessoes e titulos sao tarefa do participante.
-    db.add(ChatMessage(session_key="default", role="user", content=payload.message, model=resolved_model))
-    db.add(ChatMessage(session_key="default", role="assistant", content=reply, model=resolved_model))
+    # Titulo automatico se a sessao ainda nao tiver um
+    if not session.title:
+        session.title = _auto_title(payload.message)
+
+    db.add(ChatMessage(session_id=session.id, role="user", content=payload.message, model=resolved_model))
+    db.add(ChatMessage(session_id=session.id, role="assistant", content=reply, model=resolved_model))
+    session.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
 
     return ChatResponse(reply=reply, model=resolved_model)
 
 
 @router.post("/api/chat/stream")
-async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
+async def chat_stream(
+    payload: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    session = _get_session_or_404(payload.session_id, current_user, db)
     resolved_model = payload.model or OPENROUTER_MODEL_DEFAULT
 
     async def event_generator():
@@ -66,22 +98,15 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
             return
 
         if full_reply.strip():
-            db.add(
-                ChatMessage(
-                    session_key="default",
-                    role="user",
-                    content=payload.message,
-                    model=resolved_model,
-                )
-            )
-            db.add(
-                ChatMessage(
-                    session_key="default",
-                    role="assistant",
-                    content=full_reply,
-                    model=resolved_model,
-                )
-            )
+            # Titulo automatico na primeira mensagem
+            if not session.title:
+                session.title = _auto_title(payload.message)
+
+            db.add(ChatMessage(session_id=session.id, role="user", content=payload.message, model=resolved_model))
+            db.add(ChatMessage(
+                session_id=session.id, role="assistant", content=full_reply, model=resolved_model,
+            ))
+            session.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.commit()
 
         yield f"data: {json.dumps({'done': True}, ensure_ascii=True)}\n\n"

@@ -1,10 +1,85 @@
 const API_BASE = window.location.origin;
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
+function getToken() {
+  return localStorage.getItem("chatllm_token");
+}
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { "Authorization": `Bearer ${token}` } : {};
+}
+
+async function apiPost(path, body) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro na requisicao.");
+  }
+  return data;
+}
+
+async function apiGet(path) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: { ...authHeaders() },
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro na requisicao.");
+  }
+  return data;
+}
+
+async function register(email, password) {
+  return apiPost("/api/register", { email, password });
+}
+
+async function login(email, password) {
+  return apiPost("/api/login", { email, password });
+}
+
+async function logout() {
+  return apiPost("/api/logout", {});
+}
+
+async function me() {
+  return apiGet("/api/me");
+}
+
+// ── Session API ──
+async function getSessions() {
+  return apiGet("/api/sessions");
+}
+
+async function createSession(title = "") {
+  return apiPost("/api/sessions", { title });
+}
+
+async function deleteSession(sessionId) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
+    method: "DELETE",
+    headers: { ...authHeaders() },
+  });
+  if (!response.ok && response.status !== 204) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || "Erro ao deletar sessao.");
+  }
+}
+
+async function getSessionMessages(sessionId) {
+  return apiGet(`/api/sessions/${sessionId}/messages`);
+}
+
+// ── Chat API ──
+
+async function sendMessageStream({ message, sessionId, history, onDelta, signal }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ message, session_id: sessionId, history }),
     signal,
   });
 
