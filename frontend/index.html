@@ -256,10 +256,179 @@
         to   { opacity: 1; transform: translateY(0); }
       }
 
+      /* ===== Auth Page ===== */
+      .auth-page {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-page);
+      }
+
+      .auth-card {
+        width: 100%;
+        max-width: 380px;
+        padding: 40px 32px;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--border);
+        background: #fff;
+      }
+
+      .auth-card h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0 0 4px;
+        text-align: center;
+      }
+
+      .auth-card p.sub {
+        color: var(--muted);
+        font-size: 0.9rem;
+        text-align: center;
+        margin: 0 0 24px;
+      }
+
+      .auth-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .auth-tab {
+        flex: 1;
+        padding: 10px 0;
+        text-align: center;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--muted);
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        border-bottom: 2px solid transparent;
+        transition: color 150ms, border-color 150ms;
+      }
+
+      .auth-tab.active {
+        color: var(--text);
+        border-bottom-color: var(--accent);
+      }
+
+      .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .auth-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .auth-field label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text);
+      }
+
+      .auth-field input {
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--composer-border);
+        font: inherit;
+        font-size: 0.95rem;
+        color: var(--text);
+        background: var(--bg-page);
+        outline: none;
+        transition: border-color 150ms;
+      }
+
+      .auth-field input:focus {
+        border-color: var(--accent-hover);
+      }
+
+      .auth-btn {
+        padding: 11px 0;
+        border-radius: 8px;
+        border: none;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 120ms;
+      }
+
+      .auth-btn:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+
+      .auth-btn:disabled {
+        background: #d9d9d9;
+        cursor: not-allowed;
+      }
+
+      .auth-error {
+        color: #c0392b;
+        font-size: 0.85rem;
+        text-align: center;
+        background: #fff5f5;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #fed7d7;
+      }
+
+      .auth-success {
+        color: #2f855a;
+        font-size: 0.85rem;
+        text-align: center;
+        background: #f0fff4;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #c6f6d5;
+      }
+
+      .user-info {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 6px 24px;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .user-info .user-email {
+        font-weight: 500;
+        color: var(--text);
+      }
+
+      .user-info .logout-btn {
+        padding: 4px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: transparent;
+        font: inherit;
+        font-size: 0.85rem;
+        color: var(--text);
+        cursor: pointer;
+        transition: background 120ms;
+      }
+
+      .user-info .logout-btn:hover {
+        background: var(--user-bubble);
+      }
+
       @media (max-width: 640px) {
         .bubble.user { max-width: 90%; }
         .messages { padding: 20px 12px 12px; }
         .composer-wrap { padding: 8px 12px 16px; }
+        .auth-card { padding: 32px 24px; }
       }    </style>
   </head>
   <body>
@@ -279,6 +448,7 @@
     <script type="text/babel" src="/frontend/src/api.js"></script>
     <script type="text/babel" src="/frontend/src/MessageContent.jsx"></script>
     <script type="text/babel" src="/frontend/src/Composer.jsx"></script>
+    <script type="text/babel" src="/frontend/src/AuthPage.jsx"></script>
     <script type="text/babel" src="/frontend/src/App.jsx"></script>
   </body>
 </html>

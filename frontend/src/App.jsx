@@ -4,7 +4,27 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+const AUTH_KEY = "chatllm_auth";
+
+function getStoredAuth() {
+  try {
+    const raw = localStorage.getItem(AUTH_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeAuth(token, email) {
+  localStorage.setItem(AUTH_KEY, JSON.stringify({ token, email }));
+}
+
+function clearAuth() {
+  localStorage.removeItem(AUTH_KEY);
+}
+
 function App() {
+  const [auth, setAuth] = useState(getStoredAuth);
   const [messages, setMessages] = useState([
     {
       id: createMessageId(),
@@ -108,8 +128,45 @@ function App() {
     }
   };
 
+  const handleAuthSuccess = (token, email) => {
+    storeAuth(token, email);
+    setAuth({ token, email });
+  };
+
+  const handleLogout = async () => {
+    if (auth?.token) {
+      try {
+        await logoutUser(auth.token);
+      } catch {
+        // Continua mesmo se o logout no servidor falhar
+      }
+    }
+    clearAuth();
+    setAuth(null);
+    setMessages([
+      {
+        id: createMessageId(),
+        role: "assistant",
+        content: "Bem-vindo ao ChatLLM Lab. Como posso ajudar voce hoje?",
+      },
+    ]);
+  };
+
+  if (!auth) {
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+  }
+
   return (
     <main className="app-shell">
+      <div className="user-info">
+        <span>
+          Logado como <span className="user-email">{auth.email}</span>
+        </span>
+        <button className="logout-btn" onClick={handleLogout}>
+          Sair
+        </button>
+      </div>
+
       <header className="app-header">
         <div className="brand">ChatLLM Lab</div>
       </header>
