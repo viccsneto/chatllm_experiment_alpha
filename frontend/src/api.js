@@ -89,11 +89,26 @@ async function apiMe(token) {
 
 // ── Chat API ───────────────────────────────────────────────────
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
+function _getToken() {
+  try {
+    const raw = localStorage.getItem("chatllm_auth");
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return data?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+async function sendMessageStream({ message, history, sessionId, onDelta, signal }) {
+  const token = _getToken();
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ message, history, session_id: sessionId || null }),
     signal,
   });
 
@@ -140,8 +155,57 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
       }
 
       if (payload.delta) {
-        onDelta(payload.delta);
+        onDelta(payload.delta, payload.session_id);
+      }
+
+      if (payload.done) {
+        onDelta("", payload.session_id, payload.title);
       }
     }
   }
+}
+
+// ── Sessions API ───────────────────────────────────────────────
+
+async function apiCreateSession(userEmail) {
+  const token = _getToken();
+  const res = await fetch(`${API_BASE}/api/sessions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ user_email: userEmail }),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.detail || "Erro ao criar sessao.");
+  return body;
+}
+
+async function apiListSessions(userEmail) {
+  const token = _getToken();
+  const res = await fetch(`${API_BASE}/api/sessions?user_email=${encodeURIComponent(userEmail)}`, {
+    headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.detail || "Erro ao listar sessoes.");
+  return body.sessions;
+}
+
+async function apiGetSessionMessages(sessionId, userEmail) {
+  const token = _getToken();
+  const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/messages?user_email=${encodeURIComponent(userEmail)}`, {
+    headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) throw new Error("Erro ao carregar mensagens.");
+  return res.json();
+}
+
+async function apiDeleteSession(sessionId, userEmail) {
+  const token = _getToken();
+  const res = await fetch(`${API_BASE}/api/sessions/${sessionId}?user_email=${encodeURIComponent(userEmail)}`, {
+    method: "DELETE",
+    headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) throw new Error("Erro ao excluir sessao.");
 }

@@ -14,8 +14,11 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     model: str | None = None
     history: list[ChatMessageIn] = Field(default_factory=list)
+    session_id: str | None = None
 
 
 class ChatResponse(BaseModel):
     reply: str
     model: str
+    session_id: str
+    title: str | None = None
