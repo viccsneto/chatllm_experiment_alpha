@@ -5,6 +5,7 @@ function createMessageId() {
 }
 
 function App() {
+  const [auth, setAuth] = useState(() => getStoredAuth());
   const [messages, setMessages] = useState([
     {
       id: createMessageId(),
@@ -34,10 +35,25 @@ function App() {
     };
   }, []);
 
+  // ── Se nao estiver autenticado, mostra tela de login ──────────
+  if (!auth) {
+    return <AuthScreen onAuthSuccess={(email, token) => setAuth({ email, token })} />;
+  }
+
   const onStop = () => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setBusy(false);
+  };
+
+  const onLogout = async () => {
+    try {
+      await apiLogout(auth.email, auth.token);
+    } catch (_) {
+      // Mesmo se falhar, limpa local
+    }
+    clearStoredAuth();
+    setAuth(null);
   };
 
   const onSubmit = async (event, inputRef) => {
@@ -112,6 +128,10 @@ function App() {
     <main className="app-shell">
       <header className="app-header">
         <div className="brand">ChatLLM Lab</div>
+        <div className="auth-info">
+          <span className="auth-email">{auth.email}</span>
+          <button className="logout-btn" onClick={onLogout}>Sair</button>
+        </div>
       </header>
 
       <section className="messages" aria-live="polite" ref={messagesRef}>
@@ -133,7 +153,7 @@ function App() {
         onStop={onStop}
       />
 
-      <div className="warning-banner">Lembre-se, você precisa focar no experimento!!!</div>
+      <div className="warning-banner">Lembre-se, voce precisa focar no experimento!!!</div>
     </main>
   );
 }
