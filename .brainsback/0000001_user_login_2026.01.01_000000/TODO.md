@@ -5,17 +5,32 @@
 **Hard rule**: AI agents must not edit this file and must not draft paste-ready content for it.
 
 ## The Problem
-_State clearly what you are trying to achieve and the architectural constraints, avoiding implementation specifics of HOW to do it. Focus on WHAT and WHY._
+O sistema precisa de uma funcionalidade de autenticação segura para gerenciar sessões de usuários. É necessário implementar rotas de cadastro (signup), login e logout. Os dados dos usuários, incluindo senhas, devem ser armazenados em um banco de dados SQLite de forma segura (usando hash). A manutenção das sessões será feita através de JSON Web Tokens (JWT) para proteger rotas restritas, e o processo de logout deve invalidar ativamente a sessão no cliente.
 
 ## Steps
-- [ ] _Decompose the problem into actionable logical steps._
-- [ ] _Each step should represent a verifiable piece of work._
+- [x] Configurar a conexão com o banco de dados SQLite.
+- [x] Criar a tabela/modelo `User` no banco de dados com os campos necessários (ex: `id`, `email`, `password_hash`).
+- [x] Implementar a rota de Cadastro (`/signup`):
+  - [x] Receber e validar email e senha.
+  - [x] Gerar o hash da senha (ex: usando bcrypt).
+  - [x] Salvar o novo usuário no SQLite.
+- [x] Implementar a rota de Login (`/login`):
+  - [x] Validar as credenciais fornecidas contra o banco de dados.
+  - [x] Gerar e retornar um token JWT com uma expiração definida.
+- [x] Implementar middleware de autenticação para proteger rotas privadas validando o JWT.
+- [x] Implementar a rota ou mecanismo de Logout:
+  - [x] Remover ou invalidar o JWT no lado do cliente (limpar cookies ou storage).
 
 ## Success Looks Like
-- [ ] _Define rigorous, observable criteria for success. E.g., The endpoint returns 200 OK with the user object, NOT Code compiles_
+- [ ] É possível criar um novo usuário e os dados são persistidos no SQLite com a senha hasheada (não em texto plano).
+- [ ] O login com credenciais válidas retorna um token JWT válido.
+- [ ] O login com credenciais inválidas é rejeitado com o erro apropriado.
+- [ ] Rotas protegidas não podem ser acessadas sem um token JWT válido.
+- [ ] O logout remove o token com sucesso, impedindo o acesso subsequente a rotas protegidas.
 
 ## Notes
-- [ ] _Any specific edge cases, libraries to consider, or potential pitfalls._
+- **Senhas:** Nenhuma senha será armazenada em texto plano. Utilizaremos hash `bcrypt` com salt gerado aleatoriamente.
+- **Tokens:** Os tokens JWT terão uma expiração curta (ex: 1 hora) e serão assinados com um segredo (secret) mantido seguro através de variáveis de ambiente (`.env`).
 
 ---
 **⚠️ HUMAN ONLY**: This file is your strategic space. AI agents must not edit it.

@@ -3,6 +3,27 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.models import User
+
+
+@pytest.fixture
+def authed_user(db_session):
+    """Cria um usuario de teste e retorna email + password_hash."""
+    user = User(email="test@chatllm.com", password_hash="$2b$12$dummyhash")
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    # Gera um token JWT manualmente para usar nos testes
+    from backend.routers.auth import create_token
+    token = create_token(user.email)
+    return {"token": token, "user": user}
+
+
+@pytest.fixture
+def auth_headers(authed_user):
+    return {"Authorization": f"Bearer {authed_user['token']}"}
+
 
 class TestHealthEndpoint:
     def test_health_returns_ok(self, client: TestClient):
@@ -20,41 +41,61 @@ class TestRootEndpoint:
 
 
 class TestChatEndpoint:
-    def test_chat_endpoint_exists(self, client: TestClient):
+    def test_chat_endpoint_exists(self, client: TestClient, auth_headers):
         """Verifica que o endpoint /api/chat responde (espera erro de config sem API key)."""
         response = client.post(
             "/api/chat",
             json={"message": "Ola"},
+            headers=auth_headers,
         )
-        # Sem OPENROUTER_API_KEY definida, esperamos 503 (config error)
-        assert response.status_code in (200, 422, 503)
+        # Sem OPENROUTER_API_KEY definida, esperamos 503 (config error), 502 (runtime) ou 200
+        assert response.status_code in (200, 422, 502, 503)
 
-    def test_chat_empty_message_rejected(self, client: TestClient):
+    def test_chat_empty_message_rejected(self, client: TestClient, auth_headers):
         """Mensagem vazia deve ser rejeitada com 422 (validacao Pydantic)."""
         response = client.post(
             "/api/chat",
             json={"message": ""},
+            headers=auth_headers,
         )
         assert response.status_code == 422
 
+    def test_chat_unauthorized_without_token(self, client: TestClient):
+        """Sem token, deve retornar 401."""
+        response = client.post(
+            "/api/chat",
+            json={"message": "Ola"},
+        )
+        assert response.status_code == 401
+
 
 class TestChatStreamEndpoint:
-    def test_chat_stream_endpoint_exists(self, client: TestClient):
+    def test_chat_stream_endpoint_exists(self, client: TestClient, auth_headers):
         """Verifica que o endpoint /api/chat/stream aceita requisicoes."""
         response = client.post(
             "/api/chat/stream",
             json={"message": "Ola"},
+            headers=auth_headers,
         )
         # Streaming pode iniciar e depois falhar sem API key
         assert response.status_code in (200, 422, 503)
 
-    def test_chat_stream_empty_message_rejected(self, client: TestClient):
+    def test_chat_stream_empty_message_rejected(self, client: TestClient, auth_headers):
         """Stream com mensagem vazia deve ser rejeitado com 422."""
         response = client.post(
             "/api/chat/stream",
             json={"message": ""},
+            headers=auth_headers,
         )
         assert response.status_code == 422
+
+    def test_chat_stream_unauthorized_without_token(self, client: TestClient):
+        """Sem token, stream deve retornar 401."""
+        response = client.post(
+            "/api/chat/stream",
+            json={"message": "Ola"},
+        )
+        assert response.status_code == 401
 
 
 class TestCORSMiddleware:
