@@ -5,17 +5,26 @@
 **Hard rule**: AI agents must not edit this file and must not draft paste-ready content for it.
 
 ## The Problem
-_State clearly what you are trying to achieve and the architectural constraints, avoiding implementation specifics of HOW to do it. Focus on WHAT and WHY._
+Atualmente o chat não possui uma pagina de login de acesso, quero adicionar um sistema de contas: o usuário se cadastra com email e senha, faz login para usar o chat, e pode fazer logout Os usuários devem ficar salvos no banco SQLite
 
 ## Steps
-- [ ] _Decompose the problem into actionable logical steps._
-- [ ] _Each step should represent a verifiable piece of work._
+- [ ] Criar uma tabela/modelo de usuário no banco (email, senha)
+- [ ] Criar endpoint de cadastro (registrar email e senha)
+- [ ] Criar endpoint de login (validar email e senha)
+- [ ] Criar endpoint de logout
+- [ ] Adicionar tela de login/cadastro no frontend
+- [ ] Testar tudo
 
 ## Success Looks Like
-- [ ] _Define rigorous, observable criteria for success. E.g., The endpoint returns 200 OK with the user object, NOT Code compiles_
+- [ ] Consigo criar uma conta nova e ela aparece no banco
+- [ ] Consigo fazer login com email e senha corretos
+- [ ] Login com senha errada é recusado
+- [ ] Consigo fazer logout
+- [ ] A senha não fica salva como texto puro (usar hash)
 
 ## Notes
-- [ ] _Any specific edge cases, libraries to consider, or potential pitfalls._
+- [ ] Usar biblioteca para criptografar a senha (bcrypt/passlib)
+- [ ] Tratar email já cadastrado e senha incorreta
 
 ---
 **⚠️ HUMAN ONLY**: This file is your strategic space. AI agents must not edit it.

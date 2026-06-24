@@ -1,10 +1,10 @@
 const API_BASE = window.location.origin;
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
+async function sendMessageStream({ message, history, sessionKey, onDelta, signal, onTitleUpdate }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, session_key: sessionKey }),
     signal,
   });
 
@@ -53,6 +53,99 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
       if (payload.delta) {
         onDelta(payload.delta);
       }
+
+      if (payload.done && payload.title && onTitleUpdate) {
+        onTitleUpdate(payload.title);
+      }
     }
   }
+}
+
+async function registerUser(email, password) {
+  const response = await fetch(`${API_BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro ao cadastrar.");
+  }
+  return data;
+}
+
+async function loginUser(email, password) {
+  const response = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro ao fazer login.");
+  }
+  return data;
+}
+
+async function logoutUser(token) {
+  const response = await fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro ao fazer logout.");
+  }
+  return data;
+}
+
+async function listSessions(token) {
+  const response = await fetch(`${API_BASE}/api/sessions`, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || "Erro ao listar sessoes.");
+  }
+  const data = await response.json();
+  return data.sessions;
+}
+
+async function createSession(token, sessionKey) {
+  const response = await fetch(`${API_BASE}/api/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+    body: JSON.stringify({ session_key: sessionKey }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || "Erro ao criar sessao.");
+  }
+  return data;
+}
+
+async function deleteSession(token, sessionKey) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionKey}`, {
+    method: "DELETE",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || "Erro ao deletar sessao.");
+  }
+}
+
+async function getSessionMessages(token, sessionKey) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionKey}/messages`, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || "Erro ao carregar mensagens.");
+  }
+  const data = await response.json();
+  return data.messages;
 }
