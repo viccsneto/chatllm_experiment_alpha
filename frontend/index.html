@@ -64,7 +64,9 @@
         flex-shrink: 0;
         padding: 12px 24px;
         border-bottom: 1px solid var(--border);
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
 
       .brand {
@@ -162,6 +164,116 @@
         background: #f4f4f4;
         border: 1px solid var(--border);
         font-size: 0.875em;
+      }
+
+      .auth-center {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .auth-form {
+        width: 100%;
+        max-width: 380px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .auth-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        text-align: center;
+      }
+
+      .auth-subtitle {
+        margin: 0;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .auth-error {
+        background: #fff5f5;
+        color: #c0392b;
+        border: 1px solid #fed7d7;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 0.85rem;
+      }
+
+      .auth-input {
+        padding: 10px 14px;
+        border: 1px solid var(--composer-border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        outline: none;
+        background: var(--bg-page);
+        color: var(--text);
+      }
+
+      .auth-input:focus {
+        border-color: var(--accent);
+      }
+
+      .auth-btn {
+        padding: 10px 14px;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+      }
+
+      .auth-btn:hover {
+        background: var(--accent-hover);
+      }
+
+      .auth-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .auth-toggle {
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .auth-toggle a {
+        color: var(--accent);
+        text-decoration: underline;
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .header-email {
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
+      .logout-btn {
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 4px 12px;
+        font-size: 0.82rem;
+        cursor: pointer;
+        color: var(--text);
+      }
+
+      .logout-btn:hover {
+        background: var(--user-bubble);
       }
 
       .composer-wrap {

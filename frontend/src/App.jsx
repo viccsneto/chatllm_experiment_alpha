@@ -4,7 +4,75 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function App() {
+function AuthScreen({ onAuthSuccess }) {
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setLoading(true);
+    try {
+      const fn = mode === "login" ? apiLogin : apiSignup;
+      const data = await fn(email, password);
+      setToken(data.token);
+      onAuthSuccess(data.email);
+    } catch (err) {
+      setAuthError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="app-shell">
+      <div className="auth-center">
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <h1 className="auth-title">ChatLLM Lab</h1>
+          <p className="auth-subtitle">{mode === "login" ? "Entre na sua conta" : "Crie sua conta"}</p>
+
+          {authError && <div className="auth-error">{authError}</div>}
+
+          <input
+            className="auth-input"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus
+          />
+          <input
+            className="auth-input"
+            type="password"
+            placeholder="Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+          />
+
+          <button className="auth-btn" type="submit" disabled={loading}>
+            {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Cadastrar"}
+          </button>
+
+          <p className="auth-toggle">
+            {mode === "login" ? (
+              <>Nao tem conta? <a href="#" onClick={(e) => { e.preventDefault(); setMode("signup"); setAuthError(""); }}>Cadastre-se</a></>
+            ) : (
+              <>Ja tem conta? <a href="#" onClick={(e) => { e.preventDefault(); setMode("login"); setAuthError(""); }}>Faca login</a></>
+            )}
+          </p>
+        </form>
+      </div>
+    </main>
+  );
+}
+
+function ChatApp({ email, onLogout }) {
   const [messages, setMessages] = useState([
     {
       id: createMessageId(),
@@ -108,10 +176,21 @@ function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await apiLogout();
+    } catch { /* ignore */ }
+    onLogout();
+  };
+
   return (
     <main className="app-shell">
       <header className="app-header">
         <div className="brand">ChatLLM Lab</div>
+        <div className="header-right">
+          <span className="header-email">{email}</span>
+          <button className="logout-btn" onClick={handleLogout}>Sair</button>
+        </div>
       </header>
 
       <section className="messages" aria-live="polite" ref={messagesRef}>
@@ -133,9 +212,39 @@ function App() {
         onStop={onStop}
       />
 
-      <div className="warning-banner">Lembre-se, você precisa focar no experimento!!!</div>
+      <div className="warning-banner">Lembre-se, voce precisa focar no experimento!!!</div>
     </main>
   );
+}
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setChecking(false);
+      return;
+    }
+    apiMe()
+      .then((data) => {
+        if (data) setUser(data.email);
+        else clearToken();
+      })
+      .catch(() => clearToken())
+      .finally(() => setChecking(false));
+  }, []);
+
+  if (checking) {
+    return <main className="app-shell"><div className="auth-center"><p>Verificando sessao...</p></div></main>;
+  }
+
+  if (!user) {
+    return <AuthScreen onAuthSuccess={(email) => setUser(email)} />;
+  }
+
+  return <ChatApp email={user} onLogout={() => setUser(null)} />;
 }
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
