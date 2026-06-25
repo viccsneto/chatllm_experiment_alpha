@@ -2,7 +2,53 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from backend.models import ChatMessage
+import pytest
+
+from backend.models import ChatMessage, User
+
+
+class TestUser:
+    def test_create_user(self, db_session):
+        user = User(email="user@test.com", hashed_password="hash123")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        assert user.id is not None
+        assert user.email == "user@test.com"
+        assert user.hashed_password == "hash123"
+        assert user.is_active is True
+        assert isinstance(user.created_at, datetime)
+
+    def test_user_unique_email(self, db_session):
+        user1 = User(email="unique@test.com", hashed_password="hash1")
+        db_session.add(user1)
+        db_session.commit()
+
+        user2 = User(email="unique@test.com", hashed_password="hash2")
+        db_session.add(user2)
+        with pytest.raises(Exception):
+            db_session.commit()
+
+    def test_user_default_active(self, db_session):
+        user = User(email="active@test.com", hashed_password="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        assert user.is_active is True
+
+    def test_user_query_by_email(self, db_session):
+        user = User(email="query@test.com", hashed_password="hash")
+        db_session.add(user)
+        db_session.commit()
+
+        found = db_session.query(User).filter(User.email == "query@test.com").first()
+        assert found is not None
+        assert found.email == "query@test.com"
+
+        not_found = db_session.query(User).filter(User.email == "notfound@test.com").first()
+        assert not_found is None
 
 
 class TestChatMessage:

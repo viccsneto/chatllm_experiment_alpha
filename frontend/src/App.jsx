@@ -15,9 +15,12 @@ function App() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [user, setUserState] = useState(getUser);
+  const [authMode, setAuthMode] = useState(null);
   const messagesRef = useRef(null);
   const abortControllerRef = useRef(null);
 
+  const isLoggedIn = !!user;
   const chatHistory = useMemo(
     () => messages.filter((msg) => msg.role === "user" || msg.role === "assistant"),
     [messages]
@@ -33,6 +36,27 @@ function App() {
       abortControllerRef.current?.abort();
     };
   }, []);
+
+  const onAuthSuccess = (data) => {
+    setToken(data.access_token);
+    setUser(data.user);
+    setUserState(data.user);
+    setAuthMode(null);
+  };
+
+  const onAuthCancel = (nextMode) => {
+    if (nextMode === "login" || nextMode === "register") {
+      setAuthMode(nextMode);
+    } else {
+      setAuthMode(null);
+    }
+  };
+
+  const onLogout = () => {
+    clearToken();
+    clearUser();
+    setUserState(null);
+  };
 
   const onStop = () => {
     abortControllerRef.current?.abort();
@@ -108,10 +132,33 @@ function App() {
     }
   };
 
+  if (authMode) {
+    return (
+      <Auth
+        mode={authMode}
+        onSuccess={onAuthSuccess}
+        onCancel={onAuthCancel}
+      />
+    );
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
         <div className="brand">ChatLLM Lab</div>
+        <div className="auth-toolbar">
+          {isLoggedIn ? (
+            <>
+              <span className="auth-email">{user.email}</span>
+              <button className="auth-toolbar-btn" onClick={onLogout}>Logout</button>
+            </>
+          ) : (
+            <>
+              <button className="auth-toolbar-btn" onClick={() => setAuthMode("login")}>Login</button>
+              <button className="auth-toolbar-btn" onClick={() => setAuthMode("register")}>Cadastro</button>
+            </>
+          )}
+        </div>
       </header>
 
       <section className="messages" aria-live="polite" ref={messagesRef}>
@@ -133,7 +180,7 @@ function App() {
         onStop={onStop}
       />
 
-      <div className="warning-banner">Lembre-se, você precisa focar no experimento!!!</div>
+      <div className="warning-banner">Lembre-se, voce precisa focar no experimento!!!</div>
     </main>
   );
 }
