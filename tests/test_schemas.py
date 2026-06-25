@@ -62,6 +62,14 @@ class TestChatRequest:
         req = ChatRequest(message="Hello")
         assert req.history == []
 
+    def test_session_id_defaults_to_none(self):
+        req = ChatRequest(message="Hello")
+        assert req.session_id is None
+
+    def test_session_id_set(self):
+        req = ChatRequest(message="Hello", session_id=42)
+        assert req.session_id == 42
+
 
 class TestChatResponse:
     def test_valid_response(self):

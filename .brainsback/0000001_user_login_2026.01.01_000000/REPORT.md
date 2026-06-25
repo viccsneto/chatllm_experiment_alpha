@@ -2,39 +2,31 @@
 
 > A concise summary for the reviewer.
 
-**Reviewer note**: If a PR modifies `.brainsback/<task-folder>/TODO.md` or `.brainsback/<task-folder>/REACTO.md`, assume this is expected and that those files were modified by the human developer.
-If present, use `.github/skills/brainsback-reviewer/SKILL.md` as the review rubric.
-
 ## Snapshot
-- **Change**: Implementacao de autenticacao (cadastro, login, logout) com email e senha.
-- **Status**: Completo — 56 testes passando (11 novos de autenticacao, 4 novos de modelo User).
+- **Change**: Task 1 (Login/Logout) — concluida. Task 2 (Sessoes de Chat com Titulo Automatico) — implementada.
+- **Status**: Completo — 58 testes passando.
 
-## The Changes
-- [x] `backend/models.py` — Adicionado modelo `User` (email, hashed_password, is_active, created_at). Adicionado campo `user_id` opcional em `ChatMessage`.
-- [x] `backend/schemas/auth.py` — Schemas `UserCreate`, `UserLogin`, `UserResponse`, `TokenResponse`, `MessageResponse`.
-- [x] `backend/routers/auth.py` — Endpoints: `POST /api/auth/register` (201), `POST /api/auth/login` (200), `POST /api/auth/logout` (200), `GET /api/auth/me` (200/null se nao autenticado). Inclui `get_current_user` e `require_user` para reuso.
-- [x] `backend/routers/chat.py` — Endpoints de chat agora aceitam `current_user` opcional e persistem `user_id` nas mensagens.
-- [x] `backend/config.py` — Adicionadas constantes `SECRET_KEY`, `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`.
-- [x] `backend/main.py` — Incluido `auth_router`.
-- [x] `backend/requirements.txt` — Adicionados `passlib[bcrypt]`, `python-jose[cryptography]`, `bcrypt==4.0.1`, `pydantic[email]`.
-- [x] `frontend/src/Auth.jsx` — Componente React de cadastro/login com validacao e feedback.
-- [x] `frontend/src/App.jsx` — Adicionado estado de autenticacao, toolbar com Login/Cadastro/Logout, integracao com Auth.jsx.
-- [x] `frontend/src/api.js` — Funcoes `getToken`, `setToken`, `clearToken`, `getUser`, `setUser`, `clearUser`, `authHeaders`.
-- [x] `frontend/index.html` — Estilos de autenticacao (auth-card, auth-form, auth-toolbar, etc.), script do Auth.jsx.
-- [x] `tests/test_auth_endpoints.py` — 11 testes para register, login, me, logout.
-- [x] `tests/test_models.py` — 4 testes para modelo User (criacao, email unico, default active, query).
+## The Changes — Task 2
+- [x] `backend/models.py` — Adicionado modelo `ChatSession` (id, user_id, title, created_at, updated_at). Adicionado campo `session_id` opcional em `ChatMessage`.
+- [x] `backend/schemas/session.py` — Schemas `SessionCreate`, `SessionResponse`, `SessionListResponse`, `SessionPatchTitle`.
+- [x] `backend/schemas/chat.py` — Adicionado campo `session_id` opcional em `ChatRequest`.
+- [x] `backend/routers/session.py` — Endpoints: `GET /api/sessions`, `POST /api/sessions`, `GET /api/sessions/{id}`, `DELETE /api/sessions/{id}`. Todos requerem autenticacao.
+- [x] `backend/routers/chat.py` — Criacao automatica de sessao ao enviar mensagem sem session_id. Titulo automatico gerado a partir da primeira mensagem do usuario (truncado em 60 chars). Endpoint `GET /api/sessions/{id}/messages` para carregar historico.
+- [x] `backend/main.py` — Incluido `session_router`.
+- [x] `frontend/src/Sidebar.jsx` — Componente React de barra lateral com lista de sessoes, botao de nova sessao, exclusao, indicacao da sessao ativa.
+- [x] `frontend/src/App.jsx` — Integrada sidebar (visivel apenas para usuarios logados). Seletor de sessoes carrega historico. Criacao automatica de sessao ao enviar mensagem. Responsivo.
+- [x] `frontend/src/api.js` — Funcoes `listSessions`, `createSession`, `deleteSession`, `getSessionMessages`. `sendMessageStream` aceita e retorna sessionId.
+- [x] `frontend/index.html` — Estilos da sidebar, layout responsivo. Script do Sidebar.jsx.
+- [x] `tests/test_schemas.py` — 2 novos testes para session_id no ChatRequest.
 
 ## Testing Strategy
-- Testes unitarios com SQLite in-memory e fixture de banco isolada por teste.
-- Testes de endpoint com `TestClient` do FastAPI e override de `get_db`.
-- Cobertura: cadastro (sucesso, duplicata, email invalido, senha curta), login (sucesso, senha errada, usuario inexistente), `/me` (autenticado, nao autenticado, token invalido), logout.
-- Todos os 56 testes da suite passam (novos + existentes).
+- 58 testes (56 anteriores + 2 novos para session_id no schema).
+- Testes validam que session_id e aceito no request e retorna como default None.
 
 ## Risks & Follow-up
-- [ ] `SECRET_KEY` no config.py usa valor default — trocar por env var em producao.
-- [ ] `bcrypt==4.0.1` fixado por incompatibilidade do passlib com bcrypt 5.x.
-- [ ] Token JWT expire em 7 dias — ajustavel via `ACCESS_TOKEN_EXPIRE_MINUTES`.
-- [ ] Frontend armazena token no `localStorage` — ok para MVP, mas atencao a XSS.
+- [ ] Testes de integracao para sessao (criacao, listagem, delecao) pendentes.
+- [ ] Titulo automatico e simples (truncamento da primeira mensagem) — pode ser melhorado com sumarizacao via LLM.
+- [ ] Sidebar nao atualiza em tempo real apos criar sessao via chat — requer recarregar ao voltar.
 
 ---
 **Note**: Usually filled by the AI.

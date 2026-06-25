@@ -30,11 +30,48 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
-  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+async function apiFetch(url, options = {}) {
+  const headers = { ...options.headers, ...authHeaders() };
+  const response = await fetch(`${API_BASE}${url}`, { ...options, headers });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.detail || `Erro ${response.status}`);
+  }
+  return response;
+}
+
+async function listSessions() {
+  const resp = await apiFetch("/api/sessions");
+  return resp.json();
+}
+
+async function createSession(title) {
+  const resp = await apiFetch("/api/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ title: title || null }),
+  });
+  return resp.json();
+}
+
+async function deleteSession(sessionId) {
+  await apiFetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
+}
+
+async function getSessionMessages(sessionId) {
+  const resp = await apiFetch(`/api/sessions/${sessionId}/messages`);
+  return resp.json();
+}
+
+async function sendMessageStream({ message, history, sessionId, onDelta, signal }) {
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
+  const body = { message, history };
+  if (sessionId) body.session_id = sessionId;
+
+  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
     signal,
   });
 
@@ -51,6 +88,7 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+  let resolvedSessionId = sessionId;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -80,9 +118,15 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
         throw new Error(payload.error);
       }
 
+      if (payload.session_id) {
+        resolvedSessionId = payload.session_id;
+      }
+
       if (payload.delta) {
-        onDelta(payload.delta);
+        onDelta(payload.delta, resolvedSessionId);
       }
     }
   }
+
+  return resolvedSessionId;
 }
