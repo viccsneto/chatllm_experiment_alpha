@@ -1,9 +1,57 @@
 const API_BASE = window.location.origin;
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
-  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+/* ── Auth ─────────────────────────────────────────────── */
+
+async function signup(email, password) {
+  const res = await fetch(`${API_BASE}/api/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Erro no cadastro.");
+  return data; // { message, token }
+}
+
+async function login(email, password) {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Erro no login.");
+  return data; // { message, token }
+}
+
+async function logout(token) {
+  const res = await fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Erro no logout.");
+  return data;
+}
+
+async function getMe(token) {
+  const res = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Nao autenticado.");
+  return data; // { id, email }
+}
+
+/* ── Chat ─────────────────────────────────────────────── */
+
+async function sendMessageStream({ message, history, onDelta, signal, token }) {
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+    method: "POST",
+    headers,
     body: JSON.stringify({ message, history }),
     signal,
   });
