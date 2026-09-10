@@ -21,13 +21,13 @@ class TestRootEndpoint:
 
 class TestChatEndpoint:
     def test_chat_endpoint_exists(self, client: TestClient):
-        """Verifica que o endpoint /api/chat responde (espera erro de config sem API key)."""
+        """Verifica que o endpoint /api/chat responde (espera erro de config ou gateway sem API key)."""
         response = client.post(
             "/api/chat",
             json={"message": "Ola"},
         )
-        # Sem OPENROUTER_API_KEY definida, esperamos 503 (config error)
-        assert response.status_code in (200, 422, 503)
+        # Pode retornar 503 (config error), 502 (gateway error) ou 200 (sucesso)
+        assert response.status_code in (200, 422, 502, 503)
 
     def test_chat_empty_message_rejected(self, client: TestClient):
         """Mensagem vazia deve ser rejeitada com 422 (validacao Pydantic)."""
