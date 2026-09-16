@@ -1,10 +1,10 @@
 const API_BASE = window.location.origin;
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
+async function sendMessageStream({ message, history, sessionKey, onDelta, signal }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, session_key: sessionKey }),
     signal,
   });
 
@@ -21,6 +21,7 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+  let sessionKeyResult = sessionKey;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -53,6 +54,54 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
       if (payload.delta) {
         onDelta(payload.delta);
       }
+
+      if (payload.session_key) {
+        sessionKeyResult = payload.session_key;
+      }
+
+      if (payload.done) {
+        return sessionKeyResult;
+      }
     }
   }
+
+  return sessionKeyResult;
+}
+
+async function listSessions() {
+  const response = await fetch(`${API_BASE}/api/sessions`);
+  if (!response.ok) throw new Error("Erro ao listar sessoes.");
+  const data = await response.json();
+  return data.sessions;
+}
+
+async function createSession(sessionKey) {
+  const response = await fetch(`${API_BASE}/api/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_key: sessionKey }),
+  });
+  if (!response.ok) throw new Error("Erro ao criar sessao.");
+  return response.json();
+}
+
+async function deleteSession(sessionKey) {
+  const response = await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionKey)}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Erro ao deletar sessao.");
+}
+
+async function getSessionMessages(sessionKey) {
+  const response = await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionKey)}/messages`);
+  if (!response.ok) throw new Error("Erro ao carregar mensagens.");
+  return response.json();
+}
+
+async function autoTitleSession(sessionKey) {
+  const response = await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionKey)}/auto-title`, {
+    method: "POST",
+  });
+  if (!response.ok) return null;
+  return response.json();
 }
