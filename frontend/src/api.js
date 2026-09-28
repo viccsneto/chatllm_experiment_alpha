@@ -1,10 +1,79 @@
 const API_BASE = window.location.origin;
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
-  const response = await fetch(`${API_BASE}/api/chat/stream`, {
+function getAuthHeaders() {
+  const token = localStorage.getItem("access_token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
+async function authFetch(url, options = {}) {
+  const headers = getAuthHeaders();
+  if (options.headers) Object.assign(headers, options.headers);
+  const response = await fetch(url, { ...options, headers });
+  if (response.status === 401) {
+    const refreshToken = localStorage.getItem("refresh_token");
+    if (refreshToken) {
+      const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (refreshRes.ok) {
+        const data = await refreshRes.json();
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("refresh_token", data.refresh_token);
+        headers["Authorization"] = `Bearer ${data.access_token}`;
+        return fetch(url, { ...options, headers });
+      }
+    }
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    window.location.reload();
+    throw new Error("Sessao expirada.");
+  }
+  return response;
+}
+
+// --- Session API ---
+
+async function fetchSessions() {
+  const res = await authFetch(`${API_BASE}/api/sessions`);
+  if (!res.ok) throw new Error("Erro ao carregar sessoes.");
+  return res.json();
+}
+
+async function createSession() {
+  const res = await authFetch(`${API_BASE}/api/sessions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) throw new Error("Erro ao criar sessao.");
+  return res.json();
+}
+
+async function renameSession(sessionId, title) {
+  const res = await authFetch(`${API_BASE}/api/sessions/${sessionId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error("Erro ao renomear sessao.");
+  return res.json();
+}
+
+async function deleteSession(sessionId) {
+  const res = await authFetch(`${API_BASE}/api/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Erro ao deletar sessao.");
+}
+
+// --- Chat API ---
+
+async function sendMessageStream({ message, history, sessionId, onDelta, signal }) {
+  const response = await authFetch(`${API_BASE}/api/chat/stream`, {
+    method: "POST",
+    body: JSON.stringify({ message, history, session_id: sessionId }),
     signal,
   });
 
